@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(aws logs filter-log-events:*)",
+      "Bash(./deploy.sh)",
+      "Read(//private/tmp/**)",
+      "Bash(aws lambda invoke:*)",
+      "Bash(cat:*)",
+      "Bash(for func in blog-daily-workflow blog-approval-handler blog-manual-trigger)",
+      "Bash(do echo \"=== $func ===\")",
+      "Bash(aws lambda update-function-code:*)",
+      "Bash(done)",
+      "Bash(pip3 install:*)",
+      "Read(//Users/chin/Documents/projects/**)",
+      "Bash(do echo \"Updating $func...\")",
+      "Bash(zip:*)",
+      "Bash(for func in blog-daily-workflow blog-manual-trigger)",
+      "Bash(aws secretsmanager describe-secret:*)",
+      "Bash(do aws lambda update-function-code --function-name \"$func\" --zip-file fileb://blog_agent.zip --profile blog-automation --region us-east-1 --query \"LastModified\" --output text)",
+      "Bash(aws secretsmanager update-secret:*)",
+      "Bash(aws dynamodb scan:*)",
+      "Bash(python3:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

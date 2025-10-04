@@ -1,0 +1,89 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Lambda Package
+lambda-package/
+blog_agent.zip
+
+# AWS
+.aws-sam/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Secrets (NEVER commit these!)
+*credentials*.json
+*secret*.json
+*token*.txt
+*key*.txt
+.env.production
+
+# Temporary files
+/tmp/
+*.tmp
+test.json
+/tmp/test*.json
+
+# OAuth temporary files
+get_refresh_token.py
+
+# DynamoDB local
+.dynamodb/
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Thumbnails
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+*~.nib
