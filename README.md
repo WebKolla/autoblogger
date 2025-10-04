@@ -1,6 +1,6 @@
 # Blog Automation System for Across Ceylon
 
-[![Deploy](https://github.com/WebKolla/blog-automation/actions/workflows/deploy.yml/badge.svg)](https://github.com/YOUR_USERNAME/blog-automation/actions/workflows/deploy.yml)
+[![Deploy](https://github.com/WebKolla/autoblogger/actions/workflows/deploy.yml/badge.svg)](https://github.com/YOUR_USERNAME/blog-automation/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 
