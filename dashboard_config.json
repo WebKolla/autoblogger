@@ -1,0 +1,238 @@
+{
+  "widgets": [
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["BlogAutomation", "AgentExecutionTime", {"stat": "Average", "label": "Avg Execution Time"}],
+          ["...", {"stat": "Maximum", "label": "Max Execution Time"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Agent Execution Times (All Agents)",
+        "period": 300,
+        "yAxis": {
+          "left": {
+            "label": "Seconds"
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["BlogAutomation", "AgentExecutionTime", {"dimensions": {"AgentName": "topic_discovery"}, "stat": "Average"}],
+          ["...", {"dimensions": {"AgentName": "research"}, "stat": "Average"}],
+          ["...", {"dimensions": {"AgentName": "seo_writer"}, "stat": "Average"}],
+          ["...", {"dimensions": {"AgentName": "content_checker"}, "stat": "Average"}],
+          ["...", {"dimensions": {"AgentName": "manager"}, "stat": "Average"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Execution Time by Agent",
+        "period": 300,
+        "yAxis": {
+          "left": {
+            "label": "Seconds"
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 6,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["BlogAutomation", "AgentExecutionCount", {"dimensions": {"Success": "True"}, "stat": "Sum", "label": "Success", "color": "#2ca02c"}],
+          ["...", {"dimensions": {"Success": "False"}, "stat": "Sum", "label": "Failure", "color": "#d62728"}]
+        ],
+        "view": "timeSeries",
+        "stacked": true,
+        "region": "us-east-1",
+        "title": "Agent Execution Success/Failure",
+        "period": 300,
+        "yAxis": {
+          "left": {
+            "label": "Count"
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 6,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["BlogAutomation", "AgentErrors", {"stat": "Sum", "label": "Total Errors"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Agent Errors Over Time",
+        "period": 300,
+        "yAxis": {
+          "left": {
+            "label": "Error Count"
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 12,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["BlogAutomation", "ArticleQualityScore", {"stat": "Average", "label": "Avg Quality Score"}],
+          ["...", {"stat": "Minimum", "label": "Min Quality Score"}],
+          ["...", {"stat": "Maximum", "label": "Max Quality Score"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Article Quality Scores",
+        "period": 300,
+        "yAxis": {
+          "left": {
+            "label": "Score (0-1)",
+            "min": 0,
+            "max": 1
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 12,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["BlogAutomation", "ArticleValidationCount", {"dimensions": {"Status": "APPROVED"}, "stat": "Sum", "label": "Approved", "color": "#2ca02c"}],
+          ["...", {"dimensions": {"Status": "NEEDS_REVISION"}, "stat": "Sum", "label": "Needs Revision", "color": "#ff7f0e"}],
+          ["...", {"dimensions": {"Status": "REJECTED"}, "stat": "Sum", "label": "Rejected", "color": "#d62728"}]
+        ],
+        "view": "timeSeries",
+        "stacked": true,
+        "region": "us-east-1",
+        "title": "Article Validation Status",
+        "period": 300,
+        "yAxis": {
+          "left": {
+            "label": "Count"
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 18,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["BlogAutomation", "AgentCost", {"stat": "Sum", "label": "Total Cost"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Cumulative Cost (USD)",
+        "period": 86400,
+        "yAxis": {
+          "left": {
+            "label": "USD"
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 18,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["BlogAutomation", "AgentCost", {"dimensions": {"AgentName": "research"}, "stat": "Sum", "label": "Research Agent"}],
+          ["...", {"dimensions": {"AgentName": "seo_writer"}, "stat": "Sum", "label": "Writer Agent"}]
+        ],
+        "view": "timeSeries",
+        "stacked": true,
+        "region": "us-east-1",
+        "title": "Cost by Agent (USD)",
+        "period": 86400,
+        "yAxis": {
+          "left": {
+            "label": "USD"
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 24,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["BlogAutomation", "WorkflowDuration", {"stat": "Average", "label": "Avg Duration"}],
+          ["...", {"stat": "Maximum", "label": "Max Duration"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Workflow Duration",
+        "period": 300,
+        "yAxis": {
+          "left": {
+            "label": "Seconds"
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 24,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["BlogAutomation", "WorkflowCount", {"stat": "Sum", "label": "Total Workflows"}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "Workflow Count",
+        "period": 300,
+        "yAxis": {
+          "left": {
+            "label": "Count"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import json
 import requests
 import os
 import re
+import time
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 import hashlib
@@ -289,6 +290,7 @@ class BlogAgent:
         self.dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
         self.ses = boto3.client("ses", region_name="us-east-1")
         self.secrets = boto3.client("secretsmanager", region_name="us-east-1")
+        self.cloudwatch = boto3.client("cloudwatch", region_name="us-east-1")
 
         self.model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
         # Load secrets
@@ -336,6 +338,28 @@ class BlogAgent:
             return json.loads(response["SecretString"])
         except Exception as e:
             raise Exception(f"Failed to retrieve {secret_name}: {str(e)}")
+
+    def _publish_metric(self, metric_name: str, value: float, unit: str = "None", dimensions: Dict = None):
+        """Publish metric to CloudWatch"""
+        try:
+            metric_data = {
+                "MetricName": metric_name,
+                "Value": value,
+                "Unit": unit,
+                "Timestamp": datetime.now(timezone.utc)
+            }
+
+            if dimensions:
+                metric_data["Dimensions"] = [
+                    {"Name": k, "Value": str(v)} for k, v in dimensions.items()
+                ]
+
+            self.cloudwatch.put_metric_data(
+                Namespace="BlogAutomation",
+                MetricData=[metric_data]
+            )
+        except Exception as e:
+            print(f"Warning: Failed to publish metric {metric_name}: {str(e)}")
 
     def select_next_topic(self) -> Dict:
         """Select next topic from bank based on what hasn't been used"""
@@ -1342,9 +1366,30 @@ def approval_handler(event, context):
         if action == 'approve':
             print(f"Approving workflow: {workflow_id}")
 
-            # Reconstruct article and images
-            article = json.loads(workflow['article_data'])
-            images = json.loads(workflow['images_data'])
+            # Reconstruct article and images (handle both single-agent and multi-agent formats)
+            article_data = workflow.get('article_data')
+            images_data = workflow.get('images_data')
+
+            # Single-agent format: JSON strings
+            if isinstance(article_data, str):
+                article = json.loads(article_data)
+                images = json.loads(images_data)
+            # Multi-agent format: nested dicts
+            elif isinstance(article_data, dict):
+                article = article_data.get('article', {})
+                images = article_data.get('images', [])
+
+                # Multi-agent doesn't store original_topic in article, add it from workflow
+                if 'original_topic' not in article and 'topic_category' in workflow:
+                    article['original_topic'] = {
+                        'category': workflow['topic_category'],
+                        'title': workflow.get('topic_title', article.get('title', 'Unknown'))
+                    }
+            else:
+                return {
+                    "statusCode": 500,
+                    "body": "Invalid article data format in workflow"
+                }
 
             print(f"Article reconstructed, publishing to Sanity...")
 
@@ -1413,6 +1458,7 @@ def approval_handler(event, context):
 
 def manual_trigger_handler(event, context):
     """Manual trigger for testing"""
+    start_time = time.time()
     agent = BlogAgent()
     workflow_id = f"workflow-manual-{int(datetime.now().timestamp())}"
 
@@ -1423,10 +1469,11 @@ def manual_trigger_handler(event, context):
 
         try:
             response = agent.workflow_table.scan(
-                FilterExpression=Attr('status').eq('awaiting_approval') &
+                FilterExpression=(Attr('status').eq('in_progress') | Attr('status').eq('awaiting_approval')) &
                                 Attr('created_at').gt(datetime.fromtimestamp(ten_min_ago/1000, timezone.utc).isoformat())
             )
             if response.get('Items'):
+                print(f"Duplicate workflow detected. Blocking execution.")
                 return {
                     "statusCode": 429,
                     "body": json.dumps({
@@ -1451,9 +1498,33 @@ def manual_trigger_handler(event, context):
 
         print(f"Manual trigger for topic: {topic['title']}")
 
+        # CRITICAL: Create workflow entry immediately to prevent duplicate invocations
+        agent.workflow_table.put_item(
+            Item={
+                "workflow_id": workflow_id,
+                "status": "in_progress",
+                "topic_title": topic['title'],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        )
+        print(f"Created workflow entry: {workflow_id}")
+
         article = agent.research_and_write(topic)
         images = agent.find_images(article)
         email_sent = agent.send_email_preview(article, images, workflow_id)
+
+        # Publish metrics
+        duration = time.time() - start_time
+        agent._publish_metric("WorkflowDuration", duration, "Seconds", {"WorkflowType": "manual"})
+        agent._publish_metric("WorkflowSuccess", 1, "Count", {"WorkflowType": "manual"})
+        agent._publish_metric("ArticleWordCount", article.get("word_count", 0), "Count")
+
+        # Estimate cost (rough approximation)
+        input_tokens = 15000  # Approximate prompt size
+        output_tokens = article.get("word_count", 0) * 1.3  # Rough estimate
+        cost = (input_tokens / 1000 * 0.003) + (output_tokens / 1000 * 0.015)
+        agent._publish_metric("WorkflowCost", cost, "None", {"WorkflowType": "manual"})
 
         return {
             "statusCode": 200,
@@ -1468,4 +1539,11 @@ def manual_trigger_handler(event, context):
         }
 
     except Exception as e:
+        # Publish error metric
+        try:
+            duration = time.time() - start_time
+            agent._publish_metric("WorkflowDuration", duration, "Seconds", {"WorkflowType": "manual"})
+            agent._publish_metric("WorkflowErrors", 1, "Count", {"WorkflowType": "manual"})
+        except:
+            pass
         return {"statusCode": 500, "body": json.dumps({"error": str(e)})}

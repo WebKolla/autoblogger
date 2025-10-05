@@ -1,294 +1,522 @@
-# Blog Automation System for Across Ceylon
+# 🤖 Blog Automation System
 
-[![Deploy](https://github.com/WebKolla/autoblogger/actions/workflows/deploy.yml/badge.svg)](https://github.com/YOUR_USERNAME/blog-automation/actions/workflows/deploy.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
+[![AWS Lambda](https://img.shields.io/badge/AWS-Lambda-orange.svg)](https://aws.amazon.com/lambda/)
 
-Automated AI-powered blog content generation system for [acrossceylon.com](https://acrossceylon.com) - Sri Lanka's premier cycling tour operator.
+Intelligent multi-agent system for automated blog content generation for [acrossceylon.com](https://acrossceylon.com) - Sri Lanka's premier cycling tour operator.
+
+---
 
 ## 🎯 What It Does
 
-Generates 2,500+ word SEO-optimized blog articles about cycling tourism in Sri Lanka:
-- ✅ AI-powered content writing using Claude 3 Sonnet
-- ✅ Real-time keyword research via Google Keyword Planner API
-- ✅ Automatic image sourcing from Cloudinary + Pexels
-- ✅ Human-in-the-loop approval via email
-- ✅ One-click publishing to Sanity CMS
-- ✅ **Budget: <$100/month**
+Automatically generates high-quality, SEO-optimized blog articles (2,500-3,500 words) about cycling tourism in Sri Lanka using a sophisticated multi-agent architecture:
 
-## 🏗️ Architecture
+- ✅ **Smart Topic Discovery** - Analyzes published content to identify gaps
+- ✅ **AI-Powered Research** - Google Keyword Planner API integration
+- ✅ **Professional Writing** - Claude 3 Sonnet generates complete articles
+- ✅ **Quality Validation** - 5-check automated QA system with scoring
+- ✅ **Image Sourcing** - Cloudinary (priority) + Pexels (fallback)
+- ✅ **Email Approval** - Quality report with approve/decline workflow
+- ✅ **Sanity CMS Integration** - Automatic publishing with approval
+
+---
+
+## 🏗️ Multi-Agent Architecture
+
+The system uses 5 specialized AI agents coordinated by a Manager Agent:
+
+### Agent Responsibilities
+
+| Agent | Purpose | Technologies |
+|-------|---------|--------------|
+| **Manager** | Orchestrates workflow, manages state, sends emails | DynamoDB, SES, CloudWatch |
+| **Topic Discovery** | Finds content gaps, selects topics | Python, DynamoDB |
+| **Research** | Keyword research, content strategy | Google Ads API, Claude |
+| **SEO Writer** | Generates complete articles | Claude 3 Sonnet, Cloudinary, Pexels |
+| **Content Checker** | Quality validation (5 checks, 0-100 score) | Python (no AI) |
+
+### Workflow
 
 ```
-EventBridge (daily 10am UTC)
+Manager Agent
     ↓
-Lambda: blog-daily-workflow
-    ↓
-Claude AI (research & write)
-    ↓
-Cloudinary + Pexels (find images)
-    ↓
-SES (email preview with approve/decline)
-    ↓
-API Gateway → Lambda: blog-approval-handler
-    ↓
-Sanity CMS (publish article)
+Topic Discovery → Research → SEO Writer → Content Checker
+                                              ↓
+                                    [Score 0-100]
+                                              ↓
+                            ┌─────────────────┼─────────────────┐
+                            ↓                 ↓                 ↓
+                        APPROVED          NEEDS_REVISION    REJECTED
+                        (≥85%)            (70-84%)          (<70%)
+                            ↓                 ↓
+                      [Send Email]      [Send Email]      [No Email]
+                            ↓                 ↓
+                        [Approve/Decline from Email]
+                            ↓
+                    [Publish to Sanity CMS]
 ```
 
-**Stack:** Python 3.12, AWS Lambda, DynamoDB, Bedrock, SES, API Gateway, EventBridge
+---
 
-## 📦 Setup
+## 🧠 Quality Validation System
+
+Every article receives a quality score (0-100) based on 5 automated checks:
+
+### 1. Factual Accuracy (25% weight)
+- Verifies facts against research report
+- Requires 70% coverage minimum
+- Critical failure if <70%
+
+### 2. SEO Compliance (20% weight)
+- Keyword density 1-3%
+- Meta title 50-60 chars
+- Meta description 140-160 chars
+- Internal links 2-5
+- Images 3-5
+
+### 3. Research Alignment (20% weight)
+- Covers must-include items
+- Requires 80% coverage minimum
+- Critical failure if <80%
+
+### 4. Uniqueness (20% weight)
+- Jaccard similarity with recent 10 articles
+- Must be <20% similar
+- Critical failure if too similar
+
+### 5. Quality Assessment (15% weight)
+- Word count 2,500-3,500
+- Flesch readability >60
+
+**Validation Outcomes:**
+- **APPROVED** (≥85%): Article approved, email sent
+- **NEEDS_REVISION** (70-84%): Minor issues, email sent with warnings
+- **REJECTED** (<70%): Quality too low, no email sent
+
+---
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- AWS Account with:
-  - Bedrock access (Claude 3 Sonnet)
-  - SES verified sender email
-- Google Cloud Console project (for Keyword Planner)
+- AWS Account with Bedrock access (Claude 3 Sonnet model: `anthropic.claude-3-sonnet-20240229-v1:0`)
+- Google Cloud Console project (Keyword Planner API)
 - Sanity CMS account
-- Cloudinary account (optional)
+- Cloudinary account (optional, for custom images)
 - Pexels API key
+- SES verified sender email
 
-### 1. Configure AWS Secrets
+### 1. Clone Repository
 
 ```bash
-# Sanity CMS token
+git clone https://github.com/YOUR_USERNAME/blog-automation.git
+cd blog-automation
+```
+
+### 2. Configure AWS Secrets
+
+```bash
+# Sanity CMS credentials
 aws secretsmanager create-secret \
-  --name blog-sanity-token \
-  --secret-string '{"token":"YOUR_SANITY_TOKEN"}' \
+  --name blog-sanity-credentials \
+  --secret-string '{"project_id":"xxx","dataset":"production","token":"xxx"}' \
   --region us-east-1
 
-# Pexels API key
-aws secretsmanager create-secret \
-  --name blog-pexels-key \
-  --secret-string '{"key":"YOUR_PEXELS_KEY"}' \
-  --region us-east-1
-
-# Cloudinary (optional)
+# Cloudinary credentials (optional)
 aws secretsmanager create-secret \
   --name blog-cloudinary-credentials \
   --secret-string '{"cloud_name":"xxx","api_key":"xxx","api_secret":"xxx"}' \
   --region us-east-1
 
-# Google Ads API (for keyword research)
+# Pexels API key
 aws secretsmanager create-secret \
-  --name blog-google-ads-credentials \
-  --secret-string '{"client_id":"xxx","client_secret":"xxx","refresh_token":"xxx","developer_token":"xxx"}' \
+  --name blog-pexels-credentials \
+  --secret-string '{"api_key":"xxx"}' \
+  --region us-east-1
+
+# Google Keyword Planner credentials
+aws secretsmanager create-secret \
+  --name blog-google-keywords-credentials \
+  --secret-string '{"client_id":"xxx","client_secret":"xxx","refresh_token":"xxx","developer_token":"xxx","customer_id":"xxx"}' \
   --region us-east-1
 ```
 
-### 2. Deploy Infrastructure
+### 3. Deploy Infrastructure
 
 ```bash
 export AWS_PROFILE=blog-automation
 export AWS_REGION=us-east-1
 
+chmod +x deploy.sh
 ./deploy.sh
 ```
 
-This creates:
-- 3 Lambda functions (workflow, approval, manual trigger)
-- DynamoDB table (workflow state tracking)
-- API Gateway (approval endpoint)
-- EventBridge rule (daily trigger at 10am UTC)
-- IAM role with required permissions
+**This creates:**
+- ✅ 5 Lambda functions (2 multi-agent workflows, 2 single-agent workflows, 1 approval handler)
+- ✅ DynamoDB table `blog-workflow-state`
+- ✅ API Gateway approval endpoint
+- ✅ EventBridge daily schedule (10 AM UTC)
+- ✅ IAM role with CloudWatch, Bedrock, DynamoDB, SES permissions
 
-### 3. Configure Sanity
+### 4. Test the Multi-Agent System
 
-Update `SANITY_PROJECT_ID` in `blog_agent.py`:
-```python
-SANITY_PROJECT_ID = "your-project-id"
-SANITY_DATASET = "blog-production"
+```bash
+# Trigger multi-agent workflow
+aws lambda invoke \
+  --function-name blog-multiagent-workflow \
+  --payload '{}' \
+  /tmp/test.json \
+  --profile blog-automation \
+  --region us-east-1
+
+# Check DynamoDB for workflow
+aws dynamodb scan \
+  --table-name blog-workflow-state \
+  --profile blog-automation \
+  --region us-east-1 \
+  --max-items 1
 ```
 
-## 🚀 Usage
+### 5. Approve Article from Email
+
+1. **Check your inbox** for approval email with quality score
+2. **Click APPROVE** to publish to Sanity CMS
+3. **Click DECLINE** to reject the article
+
+---
+
+## 📝 Usage
+
+### Automatic Daily Generation
+
+Articles are generated automatically every day at **10 AM UTC** using the multi-agent workflow.
+
+Current EventBridge configuration:
+```bash
+# Check which workflow is scheduled
+aws events list-targets-by-rule \
+  --rule blog-daily-trigger \
+  --profile blog-automation \
+  --region us-east-1
+```
 
 ### Manual Trigger
 
 Generate an article immediately:
+
 ```bash
+# Multi-agent (recommended - includes quality validation)
+aws lambda invoke \
+  --function-name blog-multiagent-workflow \
+  --payload '{}' \
+  /tmp/test.json \
+  --profile blog-automation
+
+# Single-agent (faster, no quality validation)
 aws lambda invoke \
   --function-name blog-manual-trigger \
   --payload '{}' \
-  /tmp/test.json
+  /tmp/test.json \
+  --profile blog-automation
 ```
 
-### Specific Topic
+### Email Approval Workflow
+
+**Multi-Agent Email Includes:**
+- Quality score badge (0-100)
+- Validation status (APPROVED/NEEDS_REVISION)
+- Strengths and areas for improvement
+- Article preview
+- Metadata (word count, reading time, keywords)
+- Up to 3 images preview
+- Approve/Decline buttons
+
+**Single-Agent Email Includes:**
+- Article preview
+- Metadata
+- Images preview
+- Approve/Decline buttons
+
+### View Workflows
 
 ```bash
-aws lambda invoke \
-  --function-name blog-manual-trigger \
-  --payload '{"topic_title":"Cycling Through Sri Lanka'\''s Cultural Triangle"}' \
-  /tmp/test.json
+# Recent workflows
+aws dynamodb scan \
+  --table-name blog-workflow-state \
+  --profile blog-automation \
+  --max-items 5 \
+  --query 'Items[*].[workflow_id.S, status.S, article_title.S, created_at.S]' \
+  --output table
 ```
 
-### Email Approval
+---
 
-1. Receive email with article preview
-2. Click **APPROVE** to publish to Sanity CMS
-3. Click **DECLINE** to reject
+## 🛠️ Configuration
 
-### Automatic Daily
+### Lambda Functions
 
-Articles generate automatically every day at 10am UTC.
+| Function | Purpose | Memory | Timeout | Retries |
+|----------|---------|--------|---------|---------|
+| blog-multiagent-workflow | Multi-agent manual trigger | 3008 MB | 900s | 0 |
+| blog-multiagent-daily | Multi-agent daily schedule | 3008 MB | 900s | 0 |
+| blog-manual-trigger | Single-agent manual trigger | 2048 MB | 900s | 0 |
+| blog-daily-workflow | Single-agent daily schedule | 2048 MB | 900s | 0 |
+| blog-approval-handler | Approval endpoint | 1024 MB | 900s | 0 |
 
-## 📝 Article Topics
+**Note:** MaximumRetryAttempts is set to 0 to prevent duplicate workflows.
 
-24 SEO-optimized topics covering:
-- Cultural routes (Ancient cities, temples, heritage sites)
-- Geographic regions (Hill country, coast, mountains)
-- Experience types (Family, solo, luxury, budget)
-- Unique angles (E-bikes, yoga retreats, wildlife safaris)
+### Environment Variables
 
-Topics are in `TOPIC_BANK` in `blog_agent.py`.
-
-## 🔑 Google Keyword Planner Setup
-
-The system integrates with Google Keyword Planner for real-time keyword research.
-
-### Get OAuth2 Refresh Token
-
-1. Create OAuth 2.0 credentials in Google Cloud Console
-2. Add redirect URI: `http://localhost:8080/`
-3. Run `get_refresh_token.py`:
-   ```bash
-   python3 get_refresh_token.py
-   ```
-4. Authorize in browser and copy refresh token
-
-### Get Developer Token
-
-1. Go to https://ads.google.com/aw/apicenter
-2. Copy your Developer Token
-
-### Update Secret
-
+All daily workflow functions require:
 ```bash
-aws secretsmanager update-secret \
-  --secret-id blog-google-ads-credentials \
-  --secret-string '{"client_id":"xxx","client_secret":"xxx","refresh_token":"xxx","developer_token":"xxx"}'
+API_GATEWAY_URL=https://your-api-gateway-url.amazonaws.com/prod
 ```
 
-## 🛠️ Maintenance
-
-### View Logs
-
+Set via:
 ```bash
-aws logs tail /aws/lambda/blog-manual-trigger --follow
+aws lambda update-function-configuration \
+  --function-name blog-multiagent-daily \
+  --environment "Variables={API_GATEWAY_URL=$API_URL}" \
+  --profile blog-automation
 ```
 
-### Clean Stale Workflows
+### Topic Bank
 
-```bash
-python3 -c "
-import boto3
-db = boto3.resource('dynamodb', region_name='us-east-1')
-table = db.Table('blog-workflow-state')
-response = table.scan(FilterExpression='#s = :status', ExpressionAttributeNames={'#s':'status'}, ExpressionAttributeValues={':status':'awaiting_approval'})
-for item in response['Items']:
-    table.delete_item(Key={'workflow_id': item['workflow_id']})
-    print(f'Deleted {item[\"workflow_id\"]}')"
-```
+24 SEO-optimized topics in `agents/topic_discovery_agent.py`:
 
-### Update Lambda Code
+**Categories:**
+- Cultural Routes (5 topics)
+- Geographic Regions (4 topics)
+- Experience Types (5 topics)
+- Rural Routes (3 topics)
+- E-Bike Adventures (4 topics)
+- Unique Experiences (3 topics)
 
-```bash
-# After editing blog_agent.py
-rm -rf lambda-package blog_agent.zip
-./deploy.sh
-```
+### Article Settings
 
-## 📊 Monitoring
+Word count: 2,500-3,500 words
+Images: 3-5 per article
+Internal links: 2-3 per article
+Keyword density: 1-3%
+Format: Sanity Portable Text JSON
 
-Check DynamoDB for workflow status:
-```bash
-aws dynamodb scan --table-name blog-workflow-state --query "Items[].{id:workflow_id.S,status:status.S,topic:topic_title.S}"
-```
-
-View recent articles:
-```bash
-aws dynamodb scan --table-name blog-workflow-state --filter-expression "attribute_exists(published_date)" --query "Items[?status.S=='published'].{topic:topic_title.S,date:published_date.S}" --output table
-```
-
-## 💰 Cost Breakdown
-
-**Monthly estimate (<$100):**
-- Lambda executions: ~$5
-- Bedrock (Claude): ~$30-40
-- DynamoDB: ~$1
-- SES: Free (< 62K emails)
-- API Gateway: ~$1
-- CloudWatch: ~$2
-- **Total: ~$40-50/month**
-
-## 🔧 Configuration
-
-### Email Settings
-
-Update sender email in `blog_agent.py`:
-```python
-Source="your-email@acrossceylon.com"
-Destination={"ToAddresses": ["your-email@acrossceylon.com"]}
-```
-
-### Article Length
-
-Adjust in prompt:
-```python
-# Target 2500-3500 words
-"max_tokens": 16000
-```
-
-### Image Sources
-
-Priority: Cloudinary (your photos) → Pexels (stock)
-
-## 🐛 Troubleshooting
-
-**Lambda timeout:**
-- Increase `max_tokens` for longer articles
-- Check Bedrock timeout (currently 5 min)
-
-**Duplicate articles:**
-- Check for multiple Lambda invocations
-- Clean stale workflows in DynamoDB
-
-**No images from Cloudinary:**
-- Verify credentials in Secrets Manager
-- Check CloudWatch logs for API errors
-- Ensure images exist in Cloudinary account
-
-**Email not received:**
-- Verify SES sender in AWS console
-- Check spam folder
-- View Lambda logs for send errors
+---
 
 ## 📁 Project Structure
 
 ```
 blog-automation/
-├── blog_agent.py           # Main Lambda function
-├── deploy.sh              # Infrastructure deployment
-├── get_refresh_token.py   # OAuth helper for Google Ads
-└── README.md              # This file
+├── agents/                          # Multi-agent system
+│   ├── base_agent.py               # Base class with Bedrock client
+│   ├── manager_agent.py            # Orchestrator + email sending
+│   ├── topic_discovery_agent.py    # Topic selection
+│   ├── research_agent.py           # Google Ads API + Claude
+│   ├── seo_writer_agent.py         # Article generation
+│   ├── content_checker_agent.py    # Quality validation (0-100 score)
+│   └── metrics.py                  # CloudWatch metrics
+│
+├── tests/                           # Test suite
+│   ├── test_phase1.py              # Foundation tests
+│   ├── test_phase2.py              # Research & writing tests
+│   ├── test_phase3.py              # Quality control tests
+│   └── test_phase4.py              # Monitoring tests
+│
+├── blog_agent.py                   # Single-agent Lambda handler
+├── multi_agent_handler.py          # Multi-agent Lambda handler
+├── deploy.sh                       # Infrastructure deployment
+├── install_mcp.sh                  # MCP server installation (optional)
+│
+├── MCP_SETUP.md                    # MCP configuration guide
+└── README.md                       # This file
 ```
-
-## 🔐 Security
-
-- All secrets stored in AWS Secrets Manager
-- IAM roles with least-privilege access
-- Approval tokens using SHA-256 hashing
-- API Gateway with Lambda authorization
-
-## 📄 License
-
-Proprietary - Across Ceylon
-
-## 👤 Author
-
-Chin @ Across Ceylon
-https://acrossceylon.com
 
 ---
 
-**Last Updated:** October 2025
-**System Version:** 2.0 (Google Ads + Cloudinary Integration)
+## 🔍 Monitoring & Debugging
+
+### View Logs
+
+```bash
+# Multi-agent logs
+aws logs tail /aws/lambda/blog-multiagent-workflow \
+  --follow \
+  --profile blog-automation \
+  --region us-east-1
+
+# Single-agent logs
+aws logs tail /aws/lambda/blog-manual-trigger \
+  --follow \
+  --profile blog-automation \
+  --region us-east-1
+
+# Filter by workflow ID
+aws logs filter-log-events \
+  --log-group-name /aws/lambda/blog-multiagent-workflow \
+  --filter-pattern "workflow-1234567890" \
+  --profile blog-automation
+```
+
+### Check Workflow State
+
+```bash
+# Get specific workflow
+aws dynamodb get-item \
+  --table-name blog-workflow-state \
+  --key '{"workflow_id":{"S":"workflow-1234567890"}}' \
+  --profile blog-automation \
+  --query 'Item.[workflow_id.S, status.S, article_title.S]' \
+  --output json
+
+# Get quality score
+aws dynamodb get-item \
+  --table-name blog-workflow-state \
+  --key '{"workflow_id":{"S":"workflow-1234567890"}}' \
+  --profile blog-automation \
+  --query 'Item.agent_states.M.content_checker.M.output.M.[quality_score.N, status.S]' \
+  --output json
+```
+
+### Common Workflow Statuses
+
+- `initialized` - Workflow started
+- `discovering_topic` - Finding unique topic
+- `researching` - Gathering keyword data
+- `writing` - Generating article
+- `checking` - Validating quality
+- `needs_revision` - Quality 70-84%, email sent
+- `approved` - Quality ≥85%, email sent (ContentChecker status)
+- `rejected` - Quality <70%, no email
+- `email_sent` - Approval email delivered
+- `published` - Article published to Sanity CMS
+- `declined` - User declined from email
+
+---
+
+## 🐛 Troubleshooting
+
+### Issue: Didn't Receive Email
+
+**Check workflow status:**
+```bash
+aws dynamodb get-item \
+  --table-name blog-workflow-state \
+  --key '{"workflow_id":{"S":"YOUR_WORKFLOW_ID"}}' \
+  --profile blog-automation \
+  --query 'Item.[status.S, agent_states.M.content_checker.M.output.M.status.S]'
+```
+
+**If status is `rejected`:** Article quality score was <70%, no email sent (by design)
+
+**If status is `email_sent`:** Check CloudWatch logs for SES message ID:
+```bash
+aws logs filter-log-events \
+  --log-group-name /aws/lambda/blog-multiagent-workflow \
+  --filter-pattern "Approval email sent" \
+  --profile blog-automation
+```
+
+**Verify SES sender:** Ensure `chin@acrossceylon.com` is verified in SES
+
+### Issue: Approval Click Gives Error
+
+**Error: "the JSON object must be str, bytes or bytearray, not dict"**
+- Fixed in latest version - redeploy: `./deploy.sh`
+
+**Error: "'original_topic'"**
+- Fixed in latest version - approval handler now supports both single-agent and multi-agent formats
+
+**Redeploy approval handler:**
+```bash
+zip -q blog_agent.zip blog_agent.py
+aws lambda update-function-code \
+  --function-name blog-approval-handler \
+  --zip-file fileb://blog_agent.zip \
+  --profile blog-automation
+```
+
+### Issue: Duplicate Workflows
+
+**Symptom:** 3 workflows created for 1 trigger
+
+**Solution:** Lambda retries are disabled (MaximumRetryAttempts=0)
+
+**Verify:**
+```bash
+aws lambda get-function-event-invoke-config \
+  --function-name blog-multiagent-workflow \
+  --profile blog-automation \
+  --query 'MaximumRetryAttempts'
+```
+
+**Should return:** `0`
+
+**If not, fix with:**
+```bash
+aws lambda put-function-event-invoke-config \
+  --function-name blog-multiagent-workflow \
+  --maximum-retry-attempts 0 \
+  --profile blog-automation
+```
+
+### Issue: Model Access Error
+
+**Error:** "AccessDeniedException: You don't have access to the model"
+
+**Cause:** Using wrong model ID
+
+**Solution:** Ensure `agents/base_agent.py` uses:
+```python
+self.model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
+```
+
+NOT:
+```python
+self.model_id = "us.anthropic.claude-3-5-sonnet-20240620-v1:0"  # ❌ Wrong
+```
+
+---
+
+## 🔐 Security
+
+- **Secrets Management:** All API keys in AWS Secrets Manager
+- **IAM Roles:** Least-privilege access per Lambda
+- **Approval Tokens:** SHA-256 hashed, one-time use
+- **API Gateway:** Lambda authorizer for approval endpoint
+- **No Hardcoded Credentials:** Zero secrets in code
+- **Lambda Retries Disabled:** Prevents duplicate workflows
+
+---
+
+## 📊 System Comparison
+
+| Feature | Single-Agent | Multi-Agent |
+|---------|-------------|-------------|
+| Speed | 60-90s | 90-120s |
+| Quality Validation | ❌ None | ✅ 5 checks + 0-100 score |
+| Email Quality Report | ❌ Basic | ✅ Detailed with score |
+| Automatic Rejection | ❌ No | ✅ Articles <70% |
+| Memory | 2048 MB | 3008 MB |
+| Status | Production | **Production** ⭐ |
+
+**Recommendation:** Use multi-agent for quality validation and automatic rejection of low-quality articles.
+
+---
+
+## 📄 License
+
+MIT License
+
+---
+
+## 👤 Author
+
+**Chin @ Across Ceylon**
+https://acrossceylon.com
+
+Cycling tour company specializing in custom bicycle tours across Sri Lanka.
+
+---
+
+**Last Updated:** October 5, 2025
+**System Version:** Multi-Agent Production
+**Status:** ✅ Production Ready
