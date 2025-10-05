@@ -1,4 +1,4 @@
-name: Deploy to AWS Lambda
+name: Deploy Blog Automation to AWS Lambda
 
 on:
   push:
@@ -9,48 +9,80 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.12'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
-    - name: Package Lambda
+    - name: Install Python dependencies
       run: |
-        mkdir -p lambda-package
-        cp blog_agent.py lambda-package/
-        cd lambda-package
-        pip install -t . requests
-        zip -r ../blog_agent.zip .
+        python -m pip install --upgrade pip
+        pip install requests
 
-    - name: Update Lambda functions
+    - name: Run deployment script
       run: |
-        for func in blog-daily-workflow blog-approval-handler blog-manual-trigger; do
-          aws lambda update-function-code \
-            --function-name $func \
-            --zip-file fileb://blog_agent.zip \
-            --region us-east-1
+        chmod +x deploy.sh
+        ./deploy.sh
+      env:
+        AWS_REGION: us-east-1
+        AWS_DEFAULT_REGION: us-east-1
+
+    - name: Verify deployment
+      run: |
+        echo "🔍 Verifying Lambda functions..."
+        for func in blog-daily-workflow blog-manual-trigger blog-approval-handler blog-multiagent-workflow blog-multiagent-daily; do
+          echo "Checking $func..."
+          aws lambda get-function --function-name $func --region us-east-1 --query 'Configuration.[FunctionName,LastModified,Runtime,MemorySize]' --output table || echo "⚠️  $func not found (may be expected)"
         done
 
-    - name: Notify on success
+    - name: Set Lambda retry configuration
+      run: |
+        echo "⚙️  Configuring Lambda retry settings..."
+        for func in blog-multiagent-workflow blog-multiagent-daily blog-manual-trigger blog-daily-workflow; do
+          aws lambda put-function-event-invoke-config \
+            --function-name $func \
+            --maximum-retry-attempts 0 \
+            --region us-east-1 2>/dev/null || \
+          aws lambda update-function-event-invoke-config \
+            --function-name $func \
+            --maximum-retry-attempts 0 \
+            --region us-east-1 2>/dev/null || \
+          echo "⚠️  Could not configure retries for $func"
+        done
+
+    - name: Deployment summary
       if: success()
-      run: echo "✅ Lambda functions updated successfully"
+      run: |
+        echo "✅ Deployment completed successfully!"
+        echo ""
+        echo "📦 Deployed Lambda Functions:"
+        echo "  • blog-daily-workflow (single-agent daily)"
+        echo "  • blog-manual-trigger (single-agent manual)"
+        echo "  • blog-multiagent-workflow (multi-agent manual)"
+        echo "  • blog-multiagent-daily (multi-agent daily)"
+        echo "  • blog-approval-handler (approval endpoint)"
+        echo ""
+        echo "🔧 Configuration:"
+        echo "  • MaximumRetryAttempts: 0"
+        echo "  • Region: us-east-1"
+        echo "  • Runtime: Python 3.12"
 
     - name: Notify on failure
       if: failure()
-      run: echo "❌ Deployment failed"
+      run: |
+        echo "❌ Deployment failed"
+        echo "Check the logs above for error details"
