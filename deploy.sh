@@ -1,8 +1,16 @@
 #!/bin/bash
 set -e
 
-export AWS_PROFILE=blog-automation
-export AWS_REGION=us-east-1
+# Set AWS region (always needed)
+export AWS_REGION=${AWS_REGION:-us-east-1}
+
+# Only set AWS_PROFILE if not in CI/CD environment
+if [ -z "$CI" ] && [ -z "$GITHUB_ACTIONS" ]; then
+    export AWS_PROFILE=${AWS_PROFILE:-blog-automation}
+    echo "🔧 Using AWS Profile: $AWS_PROFILE"
+else
+    echo "🔧 Running in CI/CD - using environment credentials"
+fi
 
 echo "🚀 Deploying Blog Automation System..."
 echo ""

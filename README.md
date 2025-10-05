@@ -162,8 +162,13 @@ Push to `main` branch or trigger manually via GitHub Actions UI. The workflow wi
 4. Verify deployment
 
 **Required GitHub Secrets:**
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
+
+Go to your repository → Settings → Secrets and variables → Actions → New repository secret
+
+- `AWS_ACCESS_KEY_ID` - Your AWS access key
+- `AWS_SECRET_ACCESS_KEY` - Your AWS secret key
+
+**Note:** The `deploy.sh` script automatically detects CI/CD environments and skips AWS profile configuration.
 
 **Both options create:**
 - ✅ 5 Lambda functions (2 multi-agent workflows, 2 single-agent workflows, 1 approval handler)
