@@ -143,6 +143,8 @@ aws secretsmanager create-secret \
 
 ### 3. Deploy Infrastructure
 
+#### Option A: Local Deployment
+
 ```bash
 export AWS_PROFILE=blog-automation
 export AWS_REGION=us-east-1
@@ -151,7 +153,19 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
-**This creates:**
+#### Option B: GitHub Actions (Automated)
+
+Push to `main` branch or trigger manually via GitHub Actions UI. The workflow will:
+1. Package both single-agent and multi-agent systems
+2. Deploy all 5 Lambda functions
+3. Configure retry settings (MaximumRetryAttempts=0)
+4. Verify deployment
+
+**Required GitHub Secrets:**
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+
+**Both options create:**
 - ✅ 5 Lambda functions (2 multi-agent workflows, 2 single-agent workflows, 1 approval handler)
 - ✅ DynamoDB table `blog-workflow-state`
 - ✅ API Gateway approval endpoint
@@ -306,6 +320,10 @@ Format: Sanity Portable Text JSON
 
 ```
 blog-automation/
+├── .github/
+│   └── workflows/
+│       └── deploy.yml              # GitHub Actions deployment
+│
 ├── agents/                          # Multi-agent system
 │   ├── base_agent.py               # Base class with Bedrock client
 │   ├── manager_agent.py            # Orchestrator + email sending
@@ -323,9 +341,11 @@ blog-automation/
 │
 ├── blog_agent.py                   # Single-agent Lambda handler
 ├── multi_agent_handler.py          # Multi-agent Lambda handler
-├── deploy.sh                       # Infrastructure deployment
+├── deploy.sh                       # Infrastructure deployment script
 ├── install_mcp.sh                  # MCP server installation (optional)
+├── requirements.txt                # Python dependencies
 │
+├── .gitignore                      # Git ignore rules
 ├── MCP_SETUP.md                    # MCP configuration guide
 └── README.md                       # This file
 ```

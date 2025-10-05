@@ -69,7 +69,8 @@
       "Bash(else echo \"File missing\")",
       "Bash(if [ -f /tmp/test-clean.json ])",
       "Bash(then cat /tmp/test-clean.json)",
-      "Bash(do echo \"Deploying $func...\")"
+      "Bash(do echo \"Deploying $func...\")",
+      "Bash(pkill:*)"
     ],
     "deny": [],
     "ask": []
