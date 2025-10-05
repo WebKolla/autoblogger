@@ -1,5 +1,6 @@
 # 🤖 Blog Automation System
 
+[![Deploy to AWS](https://github.com/WebKolla/autoblogger/actions/workflows/deploy.yml/badge.svg)](https://github.com/WebKolla/autoblogger/actions/workflows/deploy.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![AWS Lambda](https://img.shields.io/badge/AWS-Lambda-orange.svg)](https://aws.amazon.com/lambda/)
 

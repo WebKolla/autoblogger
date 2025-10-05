@@ -70,7 +70,8 @@
       "Bash(if [ -f /tmp/test-clean.json ])",
       "Bash(then cat /tmp/test-clean.json)",
       "Bash(do echo \"Deploying $func...\")",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(git -C /Users/chin/Documents/projects/blog-automation remote get-url origin)"
     ],
     "deny": [],
     "ask": []
