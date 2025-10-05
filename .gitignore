@@ -22,10 +22,13 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+*.zip
 
 # Lambda Package
 lambda-package/
+lambda-package-multiagent/
 blog_agent.zip
+multi_agent.zip
 
 # AWS
 .aws-sam/
@@ -65,6 +68,7 @@ htmlcov/
 /tmp/
 *.tmp
 test.json
+test-*.json
 /tmp/test*.json
 
 # OAuth temporary files
