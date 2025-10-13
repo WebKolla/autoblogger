@@ -241,29 +241,84 @@ aws lambda update-function-configuration \
     --function-name blog-daily-workflow \
     --environment "Variables={API_GATEWAY_URL=$API_URL}" \
     --region $AWS_REGION >/dev/null
+aws lambda update-function-configuration \
+    --function-name blog-multiagent-daily \
+    --environment "Variables={API_GATEWAY_URL=$API_URL}" \
+    --region $AWS_REGION >/dev/null 2>/dev/null || true
+aws lambda update-function-configuration \
+    --function-name blog-multiagent-workflow \
+    --environment "Variables={API_GATEWAY_URL=$API_URL}" \
+    --region $AWS_REGION >/dev/null 2>/dev/null || true
 
 # 6. Create Schedule
 echo ""
-echo "⏰ Creating daily schedule..."
+echo "⏰ Configuring daily schedule (11:00 Europe/London) for multi-agent and disabling single-agent trigger..."
 
-aws events put-rule \
+# Disable existing single-agent EventBridge rule/target if present
+aws events remove-targets \
+    --rule blog-daily-trigger \
+    --ids 1 \
+    --region $AWS_REGION >/dev/null 2>&1 || true
+aws events disable-rule \
     --name blog-daily-trigger \
-    --schedule-expression "cron(0 10 * * ? *)" \
+    --region $AWS_REGION >/dev/null 2>&1 || true
+
+# Allow EventBridge Scheduler to invoke the multi-agent daily Lambda
+SCHEDULE_NAME="blog-multiagent-uk-11am"
+aws lambda add-permission \
+    --function-name blog-multiagent-daily \
+    --statement-id scheduler-permission \
+    --action lambda:InvokeFunction \
+    --principal scheduler.amazonaws.com \
+    --source-arn "arn:aws:scheduler:${AWS_REGION}:${ACCOUNT_ID}:schedule/default/${SCHEDULE_NAME}" \
+    --region $AWS_REGION 2>/dev/null || true
+
+# Create or update EventBridge Scheduler schedule at 11:00 Europe/London (DST-aware)
+set +e
+aws scheduler create-schedule \
+    --name $SCHEDULE_NAME \
+    --schedule-expression "cron(0 11 * * ? *)" \
+    --schedule-expression-timezone "Europe/London" \
+    --flexible-time-window "Mode=OFF" \
+    --target "Arn=arn:aws:lambda:${AWS_REGION}:${ACCOUNT_ID}:function:blog-multiagent-daily,RetryPolicy={MaximumEventAgeInSeconds=60,MaximumRetryAttempts=0}" \
     --state ENABLED \
     --region $AWS_REGION >/dev/null
+CREATE_RC=$?
+if [ $CREATE_RC -ne 0 ]; then
+  aws scheduler update-schedule \
+      --name $SCHEDULE_NAME \
+      --schedule-expression "cron(0 11 * * ? *)" \
+      --schedule-expression-timezone "Europe/London" \
+      --flexible-time-window "Mode=OFF" \
+      --target "Arn=arn:aws:lambda:${AWS_REGION}:${ACCOUNT_ID}:function:blog-multiagent-daily,RetryPolicy={MaximumEventAgeInSeconds=60,MaximumRetryAttempts=0}" \
+      --state ENABLED \
+      --region $AWS_REGION >/dev/null
+fi
+UPDATE_RC=$?
+SCHEDULER_OK=$UPDATE_RC
+set -e
 
-aws events put-targets \
-    --rule blog-daily-trigger \
-    --targets "Id=1,Arn=arn:aws:lambda:${AWS_REGION}:${ACCOUNT_ID}:function:blog-daily-workflow" \
-    --region $AWS_REGION >/dev/null
+if [ "$SCHEDULER_OK" -ne 0 ]; then
+  echo "⚠️  EventBridge Scheduler creation failed (likely due to IAM RoleArn requirement). Falling back to standard EventBridge rule at 10:00 UTC."
+  aws events put-rule \
+      --name blog-multiagent-uk-11am-fallback \
+      --schedule-expression "cron(0 10 * * ? *)" \
+      --state ENABLED \
+      --region $AWS_REGION >/dev/null
 
-aws lambda add-permission \
-    --function-name blog-daily-workflow \
-    --statement-id eventbridge \
-    --action lambda:InvokeFunction \
-    --principal events.amazonaws.com \
-    --source-arn "arn:aws:events:${AWS_REGION}:${ACCOUNT_ID}:rule/blog-daily-trigger" \
-    --region $AWS_REGION 2>/dev/null || true
+  aws events put-targets \
+      --rule blog-multiagent-uk-11am-fallback \
+      --targets "Id=1,Arn=arn:aws:lambda:${AWS_REGION}:${ACCOUNT_ID}:function:blog-multiagent-daily" \
+      --region $AWS_REGION >/dev/null
+
+  aws lambda add-permission \
+      --function-name blog-multiagent-daily \
+      --statement-id eventbridge-fallback \
+      --action lambda:InvokeFunction \
+      --principal events.amazonaws.com \
+      --source-arn "arn:aws:events:${AWS_REGION}:${ACCOUNT_ID}:rule/blog-multiagent-uk-11am-fallback" \
+      --region $AWS_REGION 2>/dev/null || true
+fi
 
 echo ""
 echo "=========================================="
@@ -283,7 +338,11 @@ echo "  ✅ Lambda: blog-multiagent-workflow"
 echo "  ✅ Lambda: blog-multiagent-daily"
 echo ""
 echo "  ✅ API Gateway: $API_URL"
-echo "  ✅ EventBridge: Daily at 10 AM UTC"
+if [ "${SCHEDULER_OK:-1}" -eq 0 ]; then
+  echo "  ✅ EventBridge Scheduler: Daily at 11:00 Europe/London (UK time)"
+else
+  echo "  ✅ EventBridge Rule (UTC Fallback): Daily at 10:00 UTC"
+fi
 echo ""
 echo "🧪 Test Single-Agent (Fast):"
 echo "aws lambda invoke --function-name blog-manual-trigger --payload '{}' /tmp/test-single.json --profile blog-automation && cat /tmp/test-single.json"
